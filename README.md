@@ -9,12 +9,15 @@
 
 </h5>
 
+[DuQuant++: Fine-grained Rotation Enhances Microscaling FP4 Quantization](https://arxiv.org/abs/2604.17789) is a new version of DuQuant that uses MXFP4 quantization format.
+
 Welcome to the official code repository for "[DuQuant: Distributing Outliers via Dual Transformation Makes Stronger Quantized LLMs **(NeurIPS 2024, Oral)**](https://arxiv.org/abs/2406.01721)".
 
 🔍 For more details, please refer to the project page: [https://duquant.github.io/](https://duquant.github.io/).
 
 
 ## 📰 News
+* [2026/04/21] 🚀 We Release [DuQuant++](https://github.com/Hsu1023/DuQuant-v2) for MXFP4 quantization!
 * [2024/09/26] 🌟 Our DuQuant paper has been accepted for a Oral presentation at NeurIPS 2024 (only top 1% out of 15,671 submissions)! 🎉 Cheers!
 * [2024/09/06] 🔥 We release the code!
 * [2024/06/03] 🚀 Our paper is available on arXiv!
@@ -113,4 +116,11 @@ We kindly request that you cite our work if you utilize the code or reference ou
   author={Lin, Haokun and Xu, Haobo and Wu, Yichen and Cui, Jingzhi and Zhang, Yingtao and Mou, Linzhan and Song, Linqi and Sun, Zhenan and Wei, Ying},
   journal={arXiv preprint arXiv:2406.01721},
   year={2024}
+}
+
+@article{lin2024duquant++,
+  title={DuQuant++: Fine-grained Rotation Enhances Microscaling FP4 Quantization},
+  author={Haokun Lin and Xinle Jia and Haobo Xu and Bingchen Yao and Xianglong Guo and Yichen Wu and Zhichao Lu and Ying Wei and Qingfu Zhang and Zhenan Sun},
+  journal={arXiv preprint arXiv:2604.17789},
+  year={2026}
 }
