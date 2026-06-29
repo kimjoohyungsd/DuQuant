@@ -98,7 +98,7 @@ def evaluate(lm, args, logger):
         for dataset in ["wikitext2", 'c4']:
             cache_testloader = f'{args.cache_dir}/testloader_{args.model_family}_{dataset}_all.cache'
             if os.path.exists(cache_testloader):
-                testloader = torch.load(cache_testloader)
+                testloader = torch.load(cache_testloader,weights_only=False)
                 logger.info(f"load calibration from {cache_testloader}")
             else:
                 dataloader, testloader = get_loaders(
@@ -381,7 +381,8 @@ def main():
         "symmetric": False,
         "dynamic_method": args.a_dynamic_method,
         "quant_method": args.quant_method,
-        "block_size": args.block_size,
+        # "block_size": args.block_size,
+        "block_size": 128,
         "max_rotation_step": args.max_rotation_step,
     }
     args.k_quant_params = {
@@ -390,7 +391,8 @@ def main():
         "symmetric": False,
         "dynamic_method": args.a_dynamic_method,
         "quant_method": args.quant_method,
-        "block_size": args.block_size,
+        # "block_size": args.block_size,
+        "block_size": 128,
     }
     args.v_quant_params = {
         "n_bits": args.abits,
@@ -398,6 +400,29 @@ def main():
         "symmetric": False,
         "dynamic_method": args.a_dynamic_method,
     }
+    # args.q_quant_params = {
+    #     "n_bits": 16,
+    #     "per_channel_axes": [],
+    #     "symmetric": False,
+    #     "dynamic_method": args.a_dynamic_method,
+    #     "quant_method": args.quant_method,
+    #     "block_size": args.block_size,
+    #     "max_rotation_step": args.max_rotation_step,
+    # }
+    # args.k_quant_params = {
+    #     "n_bits": 16,
+    #     "per_channel_axes": [],
+    #     "symmetric": False,
+    #     "dynamic_method": args.a_dynamic_method,
+    #     "quant_method": args.quant_method,
+    #     "block_size": args.block_size,
+    # }
+    # args.v_quant_params = {
+    #     "n_bits": 16,
+    #     "per_channel_axes": [],
+    #     "symmetric": False,
+    #     "dynamic_method": args.a_dynamic_method,
+    # }
     args.p_quant_params = {
         "n_bits": 16,
         "metric": "fix0to1",
@@ -414,7 +439,7 @@ def main():
         args.act_shifts = f'./act_shifts/{args.net}.pt'
 
     # quantization
-    if args.wbits < 16 or args.abits <16:
+    if args.wbits <= 16 or args.abits <= 16:
         logger.info("=== start quantization ===")
         tick = time.time()     
         # load calibration dataset

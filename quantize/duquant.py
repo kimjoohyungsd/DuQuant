@@ -50,6 +50,7 @@ def duquant(
     use_cache = model.config.use_cache
     model.config.use_cache = False
     is_llama = False
+    is_qwen = False
     if "llama" in args.net.lower() or "vicuna" in args.net.lower():
         is_llama = True
         layers = model.model.layers
@@ -76,6 +77,21 @@ def duquant(
             "down_proj":"down",
         }
         layer_name_prefix = "model.layers"
+    elif 'qwen3' in args.net.lower():
+        from models.int_qwen_layer import QuantQwen3DecoderLayer
+        is_qwen = True
+        layers = model.model.layers
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.norm = model.model.norm.to(dev)
+        DecoderLayer = QuantQwen3DecoderLayer
+        pairs = {
+            "q_proj":"qkv",
+            "o_proj":"out",
+            "up_proj":"fc1",
+            "down_proj":"down",
+        }
+        layer_name_prefix = "model.layers"
+
     else:
         raise ValueError("Only support for llama/Llama-2/Llama-3/Vicuna/Mistral now")
     
@@ -98,6 +114,11 @@ def duquant(
             super().__init__()
             self.module = module
             self.is_llama = False
+            self.is_qwen = False
+
+            # Qwen3 compatibility
+            if hasattr(module, "attention_type"):
+                self.attention_type = module.attention_type
 
         def forward(self, inp, **kwargs):
             inps[cache["i"]] = inp
@@ -105,10 +126,17 @@ def duquant(
             cache["attention_mask"] = kwargs["attention_mask"]
             if self.is_llama:
                 cache["position_ids"] = kwargs["position_ids"]
+
+            if self.is_qwen:
+                cache["position_embeddings"] = kwargs.get("position_embeddings", None)
+                cache["position_ids"] = kwargs.get("position_ids", None)
+                cache["cache_position"] = kwargs.get("cache_position", None)
+
             raise ValueError
 
     layers[0] = Catcher(layers[0])
     layers[0].is_llama = is_llama
+    layers[0].is_qwen = is_qwen
     input_ids = []
 
     with torch.no_grad():
@@ -124,7 +152,7 @@ def duquant(
     # move embedding layer and first layer to cpu
     layers[0] = layers[0].module
     layers[0] = layers[0].cpu()
-    if "llama" in args.net.lower() or "vicuna" in args.net.lower() or "mistral" in args.net.lower():
+    if "llama" in args.net.lower() or "vicuna" in args.net.lower() or "mistral" in args.net.lower() or 'qwen3' in args.net.lower():
         model.model.embed_tokens = model.model.embed_tokens.cpu()
         model.model.norm = model.model.norm.cpu()
     else:
@@ -132,7 +160,7 @@ def duquant(
     torch.cuda.empty_cache()
     
     quant_inps = inps
-    rotate_inps = copy.copy(inps).mean(dim=0)
+    rotate_inps = copy.copy(inps).mean(dim=0) # [SeqLen,Dim]
 
     fp_inps = copy.deepcopy(inps)   # take output of fp model as input
     fp_inps_2 = copy.deepcopy(inps) if args.aug_loss else None # take output of quantization model as input
@@ -154,6 +182,10 @@ def duquant(
     else:
         position_ids = None
 
+    if is_qwen:
+        position_embeddings = cache['position_embeddings']
+    else:
+        position_embeddings = None
 
     if args.resume:
         duquant_parameters = torch.load(os.path.join(args.resume, f"duquant_parameters.pth"))
@@ -169,10 +201,13 @@ def duquant(
 
         logger.info(f"=== Start quantize layer {i} ===")
         layer = layers[i]
-        qlayer = DecoderLayer(lm.model.config, layer, args)
+        if is_qwen:
+            qlayer = DecoderLayer(lm.model.config, layer, i, args)
+        else:
+            qlayer = DecoderLayer(lm.model.config, layer, args)
         qlayer = qlayer.to(dev)        
-        if torch.cuda.device_count() > 1:
-            qlayer.mlp.to("cuda:1")
+        # if torch.cuda.device_count() > 1:
+        #     qlayer.mlp.to("cuda:1")
 
         if args.quant_method == 'duquant':
             set_init_duquant_params_state(qlayer, True)
@@ -182,9 +217,9 @@ def duquant(
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
                     for j in range(args.nsamples):
-                        fp_inps[j] = qlayer(fp_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0]
+                        fp_inps[j] = qlayer(fp_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
                         if args.aug_loss:
-                            fp_inps_2[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0]
+                            fp_inps_2[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
         
         # init smooth parameters
         set_quant_state(qlayer, weight_quant=False, act_quant=True)  # weight will be manually quantized before forward
@@ -242,7 +277,7 @@ def duquant(
                     # obtain output of quantization model
                     with traincast():
                         smooth_and_quant_temporary(qlayer, args, is_llama)
-                        quant_out = qlayer(quant_inps[index:index+args.batch_size,], attention_mask=attention_mask_batch,position_ids=position_ids)[0]
+                        quant_out = qlayer(quant_inps[index:index+args.batch_size,], attention_mask=attention_mask_batch,position_ids=position_ids,position_embeddings=position_embeddings)[0]
                         loss = loss_func(fp_inps[index:index+args.batch_size,], quant_out)
                         if args.aug_loss:
                             loss += loss_func(fp_inps_2[index:index+args.batch_size,], quant_out)
@@ -270,15 +305,18 @@ def duquant(
 
         # real smooth and quantization      
         if args.quant_method == 'duquant':
-            set_init_duquant_params_state(qlayer, False)
-            set_quant_state(qlayer, weight_quant=True, act_quant=True)
+            set_init_duquant_params_state(qlayer, False) # Duquant 관련 Flag 활성화
+            set_quant_state(qlayer, weight_quant=True, act_quant=True) #
             if duquant_parameters.get(i):
                 qlayer.load_duquant_params(duquant_parameters[i], dev)
             else:
                 with torch.no_grad():
                     with torch.cuda.amp.autocast():
                         set_registered_x_none(qlayer)
-                        rotate_inps = qlayer(rotate_inps.unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0][0]
+                        if is_qwen:
+                            rotate_inps = qlayer(rotate_inps.unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
+                        else:
+                            rotate_inps = qlayer(rotate_inps.unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0][0]
             qlayer.register_duquant_params()
             set_init_duquant_params_state(qlayer, True)
         
@@ -328,7 +366,7 @@ def duquant(
                     # obtain output of quantization model
                     with traincast():
                         post_rotate_quant_temporary(qlayer, args)
-                        quant_out = qlayer(quant_inps[index:index+args.batch_size,], attention_mask=attention_mask_batch,position_ids=position_ids)[0]
+                        quant_out = qlayer(quant_inps[index:index+args.batch_size,], attention_mask=attention_mask_batch,position_ids=position_ids,position_embeddings=position_embeddings)[0]
                         loss = loss_func(fp_inps[index:index+args.batch_size,], quant_out)
                         if args.aug_loss:
                             loss += loss_func(fp_inps_2[index:index+args.batch_size,], quant_out)
@@ -367,7 +405,10 @@ def duquant(
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
                     for j in range(args.nsamples):
-                        quant_inps[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0]
+                        if is_qwen:
+                            quant_inps[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)
+                        else:
+                            quant_inps[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
             register_scales_and_zeros(qlayer)
             layers[i] = qlayer.to("cpu")
             duquant_parameters[i] = duquant_state_dict(qlayer)

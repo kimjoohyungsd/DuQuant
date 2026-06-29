@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from math import inf
 import logging
 from termcolor import colored
@@ -9,6 +10,28 @@ import pickle
 from tqdm import tqdm
 import math
 
+@torch.no_grad()
+def tokenwise_cosine_similarity(x_prev, x_cur, eps=1e-8):
+    """
+    x_prev, x_cur: [nsamples, seqlen, hidden_dim]
+    return:
+        mean_cos: scalar
+        cos_per_token: [nsamples, seqlen]
+    """
+    x_prev = x_prev.float()
+    x_cur = x_cur.float()
+
+    # token-wise hidden vector cosine
+    cos = F.cosine_similarity(x_prev, x_cur, dim=-1, eps=eps)  # [nsamples, seqlen]
+
+    # attention_mask가 [nsamples, seqlen] 형태일 때만 직접 사용
+    # if attention_mask is not None and attention_mask.dim() == 2:
+    #     mask = attention_mask.to(cos.device).float()
+    #     mean_cos = (cos * mask).sum() / mask.sum().clamp(min=1)
+    # else:
+    mean_cos = cos.mean() # scalar_value
+
+    return mean_cos, cos
 
 @torch.no_grad()
 def ampscaler_get_grad_norm(parameters, norm_type: float = 2.0) -> torch.Tensor:

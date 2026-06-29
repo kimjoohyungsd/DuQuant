@@ -5,11 +5,11 @@ import pickle
 
 device = 'cuda'
 
-for n in [int(2**i) for i in range(1, 13)]:
+for n in [int(2**i) for i in range(1, 13)]: # [2^1,2^2,2^3,.....,2^12]
 
     v_i = 1 / np.sqrt(n)
 
-    R = torch.eye(n).to(device)
+    R = torch.eye(n).to(device) # 
 
     def exchange(i, j, tensor):
         indices_row = torch.arange(tensor.size(0))
@@ -38,4 +38,4 @@ for n in [int(2**i) for i in range(1, 13)]:
         dic = {}
     dic.update({n: R})
 
-    pickle.dump(dic, open('Rot.pkl', 'wb'))
+    pickle.dump(dic, open('Rot.pkl', 'wb')) 

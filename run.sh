@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python main.py \
-    --block_size 128 \
+    --block_size 4096 \
     --max_rotation_step 256 \
     --epochs 0 \
     --wbits 4 \
@@ -13,4 +13,6 @@ python main.py \
     --lac 0.9 \
     --swc 0.8 \
     --eval_ppl \
-    --task arc_easy,arc_challenge,hellaswag,winogrande,boolq,piqa\
+    --multigpu \
+    --task arc_easy,arc_challenge,hellaswag,winogrande,boolq,piqa \
+    --permutation_times 0\

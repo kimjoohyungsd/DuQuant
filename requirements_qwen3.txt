@@ -1,0 +1,6 @@
+# ─── [동시 업데이트 필수 코어 패키지] ───
+transformers==4.57.3
+tokenizers>=0.21.0
+torch>=2.4.0
+accelerate>=0.34.0
+sentencepiece>=0.2.0
