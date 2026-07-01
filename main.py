@@ -327,7 +327,7 @@ def main():
 
     # init logger
     args.output_dir = os.path.join(args.output_dir, f"{args.model.split('/')[-1]}_w{args.wbits}a{args.abits}")
-    if args.output_dir:
+    if args.output_dir: # output_dir: 
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     if args.cache_dir:
         Path(args.cache_dir).mkdir(parents=True, exist_ok=True)
@@ -339,10 +339,10 @@ def main():
     
     # load model
     if args.net is None:
-        args.net = args.model.split('/')[-1]
+        args.net = args.model.split('/')[-1] # meta-llama/Llama2-7b-hf => Llama-2-7b-hf
     # assert args.net in net_choices
-    args.model_family = args.net.split('-')[0]
-    lm = LMClass(args)
+    args.model_family = args.net.split('-')[0] # Llama-2-7b-hf => Llama
+    lm = LMClass(args) # 
     lm.seqlen = 2048
     lm.model.eval()
     for param in lm.model.parameters():
@@ -351,8 +351,8 @@ def main():
     
 
     args.weight_quant_params = {
-        "n_bits": args.wbits,
-        "per_channel_axes": [0],
+        "n_bits": args.wbits, # bits quantization하는 단위
+        "per_channel_axes": [0], 
         "symmetric": args.symmetric,
         "dynamic_method": args.w_dynamic_method,
         "group_size": args.group_size,
@@ -372,6 +372,31 @@ def main():
         "dynamic_method": args.a_dynamic_method,
         "quant_method": args.quant_method,
         "block_size": args.block_size,
+        "max_rotation_step": args.max_rotation_step,
+        "permutation_times": args.permutation_times,
+    }
+    args.down_weight_quant_params = {
+        "n_bits": args.wbits, # bits quantization하는 단위
+        "per_channel_axes": [0], 
+        "symmetric": args.symmetric,
+        "dynamic_method": args.w_dynamic_method,
+        "group_size": args.group_size,
+        "lwc":args.lwc,
+        "swc":args.swc,
+        "quant_method": args.quant_method,
+        "block_size": 128,
+        "max_rotation_step": args.max_rotation_step,
+        "permutation_times": args.permutation_times,
+    }
+    args.down_act_quant_params = {
+        "n_bits":  args.abits,
+        "per_channel_axes": [],
+        "symmetric": False,
+        "lac":args.lac,
+        "act_group_size": args.act_group_size,
+        "dynamic_method": args.a_dynamic_method,
+        "quant_method": args.quant_method,
+        "block_size": 128,
         "max_rotation_step": args.max_rotation_step,
         "permutation_times": args.permutation_times,
     }

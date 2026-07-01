@@ -56,17 +56,17 @@ def get_gpu_memory():
     return memory_info
 
 
-def get_lowest_occupied_gpu(wait_memory=1000):
+def get_lowest_occupied_gpu(wait_memory=1000): #
 
     now_lowest_memory = 1e9
     while now_lowest_memory > wait_memory:
-        if not now_lowest_memory == 1e9:
+        if not now_lowest_memory == 1e9: # 두 번째 loop를 보고 busy waiting을 방지하기 위하여 time.sleep을 거침
             time.sleep(10)
-        memory_info = get_gpu_memory()
+        memory_info = get_gpu_memory() # 1. 각 GPU의 (ID, 전체 메모리, 사용한 메모리) Tuple의 리스트를 가지고 옴
         gpu_id, tot_mem, used_mem = sorted(
             memory_info, key=lambda x: x[2], reverse=False
-        )[0]
-        now_lowest_memory = used_mem
+        )[0] # 2. 가장 작은 used_memory의 해당하는 GPU_ID의 값을 나타냄
+        now_lowest_memory = used_mem # 3. 가장 낮은 GPU 메모리 사용량을 가지고 감
     return gpu_id
 
 

@@ -57,7 +57,7 @@ def post_q_k_temporary(fc1, fc2, scales):
 
 
 def smooth_fc_fc_temporary(fc1, fc2, scales,shifts=None):
-    # only support for v_proj and out_proh now.
+    # only support for v_proj and out_proj now.
     fc1.use_temporary_parameter = True
     fc2.use_temporary_parameter = True
     if hasattr(fc1, 'temp_weight'):

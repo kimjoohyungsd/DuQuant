@@ -180,16 +180,16 @@ class UniformAffineQuantizer(nn.Module):
         def zigzag(numbers):
             cur = 0
             up = True
-            l = [[] for i in range(hidden_dim // self.block_size)]
-            for i in range(len(numbers)):
+            l = [[] for i in range(hidden_dim // self.block_size)] # list1, list2, list3, .. list 32
+            for i in range(len(numbers)): # list
                 l[cur].append(numbers[i])
                 if up:
-                    cur += 1
+                    cur += 1  # 
                     if cur == len(l):
                         cur -= 1
                         up = False
                 else:
-                    cur -= 1
+                    cur -= 1  #
                     if cur == -1:
                         cur += 1
                         up = True
@@ -231,7 +231,7 @@ class UniformAffineQuantizer(nn.Module):
                 r, c = divmod(weight.argmax().item(), weight.shape[-1])
                 r2, c2 = divmod(weight.argmin().item(), weight.shape[-1])
                 peak_values.append((weight[r, c] - weight[r2, c2]).item())
-            exchange_id = r if weight[r,c].abs() > weight[r2, c2].abs() else r2
+            exchange_id = c if weight[r,c].abs() > weight[r2, c2].abs() else c2
             exchange_ids.append(exchange_id)
             R = Rot.clone()
             R = exchange_row_col(R, 0, exchange_id % self.block_size).to(weight)
@@ -248,7 +248,7 @@ class UniformAffineQuantizer(nn.Module):
             r, c = divmod(weight.argmax().item(), weight.shape[-1])
             r2, c2 = divmod(weight.argmin().item(), weight.shape[-1])
             peak_values.append((weight[r, c] - weight[r2, c2]).item())
-        exchange_id = r if weight[r,c].abs() > weight[r2, c2].abs() else r2
+        exchange_id = c if weight[r,c].abs() > weight[r2, c2].abs() else c2
         exchange_ids.append(exchange_id)
 
         weight = _weight.detach().clone()
@@ -309,6 +309,7 @@ class UniformAffineQuantizer(nn.Module):
                 x_shape = x.shape   # (n_tokens, hidden_dim) / (out_features, in_features)
                 hadamard = self.H.to(x)
                 x = x.reshape(-1, self.block_size)
+                # print("Hadamard Rotation applied")
                 x = x.matmul(hadamard).view(x_shape)
         elif self.quant_method == 'duquant':
             if self.rotate:

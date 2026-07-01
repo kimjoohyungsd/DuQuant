@@ -159,7 +159,7 @@ def duquant(
         raise ValueError("Only support for llama/Llama-2/Llama-3/Vicuna/Mistral now")
     torch.cuda.empty_cache()
     
-    quant_inps = inps
+    quant_inps = inps # [nsamples, seqlen,hidden_dim]
     rotate_inps = copy.copy(inps).mean(dim=0) # [SeqLen,Dim]
 
     fp_inps = copy.deepcopy(inps)   # take output of fp model as input
@@ -193,11 +193,11 @@ def duquant(
         duquant_parameters = {}
 
     for i in range(len(layers)):
-        for name in ['q', 'k', 'v', 'gate', 'up', 'down', 'o']:
+        for name in ['q', 'k', 'v', 'gate', 'up', 'o']:
             exec(f"args.{name}_weight_quant_params = copy.copy(args.weight_quant_params)")
             exec(f"args.{name}_act_quant_params = copy.copy(args.act_quant_params)")
-        args.q_quant_params = copy.copy(args.act_quant_params)
-        args.k_quant_params = copy.copy(args.act_quant_params)
+        # args.q_quant_params = copy.copy(args.act_quant_params)
+        # args.k_quant_params = copy.copy(args.act_quant_params)
 
         logger.info(f"=== Start quantize layer {i} ===")
         layer = layers[i]
@@ -206,8 +206,8 @@ def duquant(
         else:
             qlayer = DecoderLayer(lm.model.config, layer, args)
         qlayer = qlayer.to(dev)        
-        # if torch.cuda.device_count() > 1:
-        #     qlayer.mlp.to("cuda:1")
+        if torch.cuda.device_count() > 1:
+            qlayer.mlp.to("cuda:1")
 
         if args.quant_method == 'duquant':
             set_init_duquant_params_state(qlayer, True)
