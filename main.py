@@ -45,6 +45,9 @@ def evaluate(lm, args, logger):
         assert input_device == output_device
         lm._device = input_device
         lm.model.model.embed_tokens.to(input_device)
+        if hasattr(lm.model.model, "rotary_emb") and lm.model.model.rotary_emb is not None:
+            lm.model.model.rotary_emb.to(input_device)
+    #         model.model.embed_tokens = model.model.embed_tokens.cpu()
         lm.model.model.norm.to(output_device)
         lm.model.lm_head.to(output_device)
     else:

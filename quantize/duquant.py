@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from models.int_llama_layer import QuantLlamaDecoderLayer
+from models.int_llama3_layer import QuantLlama3DecoderLayer
 from models.int_mistral_layer import QuantMistralDecoderLayer
+
 from quantize.int_linear import QuantLinear
 from contextlib import nullcontext
 import copy
@@ -49,18 +51,52 @@ def duquant(
     dev = lm.device
     use_cache = model.config.use_cache
     model.config.use_cache = False
+
+    # is_llama3 = False
     is_llama = False
     is_qwen = False
     
 
-    if "llama" in args.net.lower():
+    # if "llama-3.1" in args.net.lower():
+    #     is_llama3 = True
+    #     is_llama = True
+    #     layers = model.model.layers
+    #     model.model.embed_tokens = model.model.embed_tokens.cpu()
+    #     model.model.norm = model.model.norm.to(dev)
+    #     if hasattr(model.model, "rotary_emb") and model.model.rotary_embedding is not None:
+    #         model.model.embed_tokens = model.model.embed_tokens.cpu()
+    #     DecoderLayer = QuantLlamaDecoderLayer
+    #     pairs = {
+    #         "q_proj":"qkv",
+    #         "o_proj":"out",
+    #         "up_proj":"fc1",
+    #         "down_proj":"down",
+    #     }
+    #     layer_name_prefix = "model.layers"
+
+    if 'llama-3.1' in args.net.lower():
         is_llama = True
         layers = model.model.layers
-        model.model.embed_tokens = model.model.embed_tokens.cpu()
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
         model.model.norm = model.model.norm.to(dev)
-        if hasattr(model.model, "rotary_embedding") and model.model.rotary_embedding is not None:
-            model.model.embed_tokens = model.model.embed_tokens.cpu()
-
+        if hasattr(model.model, "rotary_emb") and model.model.rotary_emb is not None:
+            model.model.rotary_emb = model.model.rotary_emb.to(dev)
+        DecoderLayer = QuantLlama3DecoderLayer
+        pairs = {
+            "q_proj":"qkv",
+            "o_proj":"out",
+            "up_proj":"fc1",
+            "down_proj":"down",
+        }
+        layer_name_prefix = "model.layers"
+        
+    elif 'llama' in args.net.lower():
+        is_llama = True
+        layers = model.model.layers
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.norm = model.model.norm.to(dev)
+        # if hasattr(model.model, "rotary_emb") and model.model.rotary_emb is not None:
+        #     model.model.rotary_emb = model.model.rotary_emb.to(dev)
         DecoderLayer = QuantLlamaDecoderLayer
         pairs = {
             "q_proj":"qkv",
@@ -69,6 +105,7 @@ def duquant(
             "down_proj":"down",
         }
         layer_name_prefix = "model.layers"
+        
     elif "mistral" in args.net.lower():
         is_llama = True
         layers = model.model.layers
@@ -82,6 +119,7 @@ def duquant(
             "down_proj":"down",
         }
         layer_name_prefix = "model.layers"
+
     elif 'qwen3' in args.net.lower():
         from models.int_qwen_layer import QuantQwen3DecoderLayer
         is_qwen = True
@@ -130,10 +168,13 @@ def duquant(
             cache["i"] += 1
             cache["attention_mask"] = kwargs["attention_mask"]
             cache["position_ids"] = kwargs["position_ids"]
+            cache['position_embeddings'] = kwargs.get('position_embeddings', None)
+            cache["cache_position"] = kwargs.get("cache_position", None)
+            
             if self.is_qwen:
                 cache["position_ids"] = kwargs.get("position_ids", None)
-                cache["cache_position"] = kwargs.get("cache_position", None)
-                cache["position_embeddings"] = kwargs.get("position_embeddings", None)
+                
+                
 
             raise ValueError
 
@@ -148,7 +189,7 @@ def duquant(
                 break
             try:
                 input_ids.append(batch[0])
-                model(batch[0].to(model.model.embed_tokens.weight.device))
+                model(batch[0].to(dev))
             except ValueError:
                 pass
     
@@ -158,6 +199,8 @@ def duquant(
     if "llama" in args.net.lower() or "vicuna" in args.net.lower() or "mistral" in args.net.lower() or 'qwen3' in args.net.lower():
         model.model.embed_tokens = model.model.embed_tokens.cpu()
         model.model.norm = model.model.norm.cpu()
+        if hasattr(model.model, "rotary_emb"):
+            model.model.rotary_emb = model.model.rotary_emb.cpu()
     else:
         raise ValueError("Only support for llama/Llama-2/Llama-3/Vicuna/Mistral now")
     torch.cuda.empty_cache()
@@ -185,8 +228,9 @@ def duquant(
     else:
         position_ids = None
 
-
     position_embeddings = cache['position_embeddings']
+    if is_qwen:
+        position_embeddings = cache['position_embeddings']
 
 
     if args.resume:
@@ -228,9 +272,9 @@ def duquant(
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
                     for j in range(args.nsamples):
-                        fp_inps[j] = qlayer(fp_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
+                        fp_inps[j] = qlayer(fp_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0]
                         if args.aug_loss:
-                            fp_inps_2[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids,position_embeddings=position_embeddings)[0]
+                            fp_inps_2[j] = qlayer(quant_inps[j].unsqueeze(0), attention_mask=attention_mask,position_ids=position_ids)[0]
         
         # init smooth parameters
         set_quant_state(qlayer, weight_quant=False, act_quant=True)  # weight will be manually quantized before forward

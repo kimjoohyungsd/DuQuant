@@ -19,19 +19,20 @@ for model_name in "${models[@]}"; do
         --block_size 128 \
         --max_rotation_step 256 \
         --epochs 0 \
-        --wbits 4 \
-        --abits 4 \
+        --wbits 16 \
+        --abits 16 \
         --model "$model_name" \
         --lwc \
         --lac 0.9 \
         --swc 0.8 \
         --eval_ppl \
         --multigpu \
-        --permutation_times 1 \
-        --only_r1 \
+        --permutation_times 0 \
+        # --smooth \
+        # --alpha 0.6 \
+        # --only_r1 \
             # --task arc_easy,arc_challenge,hellaswag,winogrande,boolq,piqa \
-            # --smooth \
-            # --alpha 0.6 \
+            
     echo "✅ Finished: ${model_name}"
     echo "=================================================="
 done
