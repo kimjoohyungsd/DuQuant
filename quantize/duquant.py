@@ -51,11 +51,16 @@ def duquant(
     model.config.use_cache = False
     is_llama = False
     is_qwen = False
-    if "llama" in args.net.lower() or "vicuna" in args.net.lower():
+    
+
+    if "llama" in args.net.lower():
         is_llama = True
         layers = model.model.layers
-        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.embed_tokens = model.model.embed_tokens.cpu()
         model.model.norm = model.model.norm.to(dev)
+        if hasattr(model.model, "rotary_embedding") and model.model.rotary_embedding is not None:
+            model.model.embed_tokens = model.model.embed_tokens.cpu()
+
         DecoderLayer = QuantLlamaDecoderLayer
         pairs = {
             "q_proj":"qkv",
@@ -124,13 +129,11 @@ def duquant(
             inps[cache["i"]] = inp
             cache["i"] += 1
             cache["attention_mask"] = kwargs["attention_mask"]
-            if self.is_llama:
-                cache["position_ids"] = kwargs["position_ids"]
-
+            cache["position_ids"] = kwargs["position_ids"]
             if self.is_qwen:
-                cache["position_embeddings"] = kwargs.get("position_embeddings", None)
                 cache["position_ids"] = kwargs.get("position_ids", None)
                 cache["cache_position"] = kwargs.get("cache_position", None)
+                cache["position_embeddings"] = kwargs.get("position_embeddings", None)
 
             raise ValueError
 
@@ -145,7 +148,7 @@ def duquant(
                 break
             try:
                 input_ids.append(batch[0])
-                model(batch[0].to(dev))
+                model(batch[0].to(model.model.embed_tokens.weight.device))
             except ValueError:
                 pass
     
@@ -182,20 +185,28 @@ def duquant(
     else:
         position_ids = None
 
-    if is_qwen:
-        position_embeddings = cache['position_embeddings']
-    else:
-        position_embeddings = None
+
+    position_embeddings = cache['position_embeddings']
+
 
     if args.resume:
         duquant_parameters = torch.load(os.path.join(args.resume, f"duquant_parameters.pth"))
     else:
         duquant_parameters = {}
 
+    # 1. 분기 조건에 따라 매핑할 레이어 이름 리스트를 먼저 정의합니다.
+    if args.only_r1:
+        target_layers = ['q', 'k', 'v', 'gate', 'up']
+    else:
+        target_layers = ['q', 'k', 'v', 'gate', 'up', 'o', 'down']
+
     for i in range(len(layers)):
-        for name in ['q', 'k', 'v', 'gate', 'up', 'o']:
-            exec(f"args.{name}_weight_quant_params = copy.copy(args.weight_quant_params)")
-            exec(f"args.{name}_act_quant_params = copy.copy(args.act_quant_params)")
+
+        for name in target_layers:
+            # 가중치(Weight) 양자화 파라미터 동적 복사
+            setattr(args, f"{name}_weight_quant_params", copy.copy(args.weight_quant_params))
+            # 활성화(Activation) 양자화 파라미터 동적 복사
+            setattr(args, f"{name}_act_quant_params", copy.copy(args.act_quant_params))
         # args.q_quant_params = copy.copy(args.act_quant_params)
         # args.k_quant_params = copy.copy(args.act_quant_params)
 

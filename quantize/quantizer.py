@@ -304,6 +304,7 @@ class UniformAffineQuantizer(nn.Module):
 
     def init_duquant(self, x: torch.Tensor):
         if self.quant_method is None:
+            self.init_duquant_params = torch.tensor(1)
             return x
         if self.rotate is None:
                 x_shape = x.shape   # (n_tokens, hidden_dim) / (out_features, in_features)
@@ -425,7 +426,7 @@ class UniformAffineQuantizer(nn.Module):
         del self.round_zero_point
 
     def register_duquant_params(self):
-        if self.rotate is not True:
+        if self.rotate is not True or self.quant_method != 'duquant':
             return
         permutation_list, R = self.permutation_list, self.R
         delattr(self, 'R')
@@ -436,7 +437,7 @@ class UniformAffineQuantizer(nn.Module):
         self.register_buffer('init_duquant_params', torch.tensor(1))
 
     def copy_duquant_params(self, quantizer_ref):
-        if quantizer_ref.rotate is True:
+        if quantizer_ref.rotate is True and quantizer_ref.quant_method =='duquant':
             assert quantizer_ref.init_duquant_params == True
             self.R = quantizer_ref.R.clone().detach()
             try:

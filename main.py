@@ -242,6 +242,7 @@ def main():
     parser.add_argument("--net", type=str, default=None, choices=net_choices)
     parser.add_argument("--act-scales", type=str, default=None)
     parser.add_argument("--act-shifts", type=str, default=None)
+    parser.add_argument("--only_r1", default=False, action="store_true", help="Restrict the DuQuant rotation transformation exclusively to the R1 topology location to reduce computation overhead.")
 
     # DuQuant
     parser.add_argument("--max_rotation_step", type=int, default=256, help="max steps for rotation transformation")
@@ -375,79 +376,110 @@ def main():
         "max_rotation_step": args.max_rotation_step,
         "permutation_times": args.permutation_times,
     }
-    args.down_weight_quant_params = {
-        "n_bits": args.wbits, # bits quantization하는 단위
-        "per_channel_axes": [0], 
-        "symmetric": args.symmetric,
-        "dynamic_method": args.w_dynamic_method,
-        "group_size": args.group_size,
-        "lwc":args.lwc,
-        "swc":args.swc,
-        "quant_method": args.quant_method,
-        "block_size": 128,
-        "max_rotation_step": args.max_rotation_step,
-        "permutation_times": args.permutation_times,
-    }
-    args.down_act_quant_params = {
-        "n_bits":  args.abits,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "lac":args.lac,
-        "act_group_size": args.act_group_size,
-        "dynamic_method": args.a_dynamic_method,
-        "quant_method": args.quant_method,
-        "block_size": 128,
-        "max_rotation_step": args.max_rotation_step,
-        "permutation_times": args.permutation_times,
-    }
-    args.q_quant_params = {
-        "n_bits": args.abits,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-        "quant_method": args.quant_method,
-        # "block_size": args.block_size,
-        "block_size": 128,
-        "max_rotation_step": args.max_rotation_step,
-    }
-    args.k_quant_params = {
-        "n_bits": args.abits,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-        "quant_method": args.quant_method,
-        # "block_size": args.block_size,
-        "block_size": 128,
-    }
-    args.v_quant_params = {
-        "n_bits": args.abits,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-    }
+
+    if args.only_r1:
+        # R4가 적용되는 위치에 quantization config
+        args.down_weight_quant_params = {
+            "n_bits": args.wbits, # bits quantization하는 단위
+            "per_channel_axes": [0], 
+            "symmetric": args.symmetric,
+            "dynamic_method": args.w_dynamic_method,
+            "group_size": args.group_size,
+            "lwc":args.lwc,
+            "swc":args.swc,
+            "quant_method": None,
+            "block_size": 128,
+            "max_rotation_step": args.max_rotation_step,
+            "permutation_times": args.permutation_times,
+        }
+        args.down_act_quant_params = {
+            "n_bits":  args.abits,
+            "per_channel_axes": [],
+            "symmetric": False,
+            "lac":args.lac,
+            "act_group_size": args.act_group_size,
+            "dynamic_method": args.a_dynamic_method,
+            "quant_method": None,
+            "block_size": 128,
+            "max_rotation_step": args.max_rotation_step,
+            "permutation_times": args.permutation_times,
+        }
+
+        #2. R2가 적용되는 위치에 Quantization config
+        args.o_weight_quant_params = {
+            "n_bits": args.wbits, # bits quantization하는 단위
+            "per_channel_axes": [0], 
+            "symmetric": args.symmetric,
+            "dynamic_method": args.w_dynamic_method,
+            "group_size": args.group_size,
+            "lwc":args.lwc,
+            "swc":args.swc,
+            "quant_method": None,
+            "block_size": 128,
+            "max_rotation_step": args.max_rotation_step,
+            "permutation_times": args.permutation_times,
+        }
+        args.o_act_quant_params = {
+            "n_bits":  args.abits,
+            "per_channel_axes": [],
+            "symmetric": False,
+            "lac":args.lac,
+            "act_group_size": args.act_group_size,
+            "dynamic_method": args.a_dynamic_method,
+            "quant_method": None,
+            "block_size": 128,
+            "max_rotation_step": args.max_rotation_step,
+            "permutation_times": args.permutation_times,
+        }
+
     # args.q_quant_params = {
-    #     "n_bits": 16,
+    #     "n_bits": args.abits,
     #     "per_channel_axes": [],
     #     "symmetric": False,
     #     "dynamic_method": args.a_dynamic_method,
     #     "quant_method": args.quant_method,
-    #     "block_size": args.block_size,
+    #     # "block_size": args.block_size,
+    #     "block_size": 128,
     #     "max_rotation_step": args.max_rotation_step,
     # }
     # args.k_quant_params = {
-    #     "n_bits": 16,
+    #     "n_bits": args.abits,
     #     "per_channel_axes": [],
     #     "symmetric": False,
     #     "dynamic_method": args.a_dynamic_method,
     #     "quant_method": args.quant_method,
-    #     "block_size": args.block_size,
+    #     # "block_size": args.block_size,
+    #     "block_size": 128,
     # }
     # args.v_quant_params = {
-    #     "n_bits": 16,
+    #     "n_bits": args.abits,
     #     "per_channel_axes": [],
     #     "symmetric": False,
     #     "dynamic_method": args.a_dynamic_method,
     # }
+    args.q_quant_params = {
+        "n_bits": 16,
+        "per_channel_axes": [],
+        "symmetric": False,
+        "dynamic_method": args.a_dynamic_method,
+        "quant_method": args.quant_method,
+        "block_size": args.block_size,
+        "max_rotation_step": args.max_rotation_step,
+    }
+    args.k_quant_params = {
+        "n_bits": 16,
+        "per_channel_axes": [],
+        "symmetric": False,
+        "dynamic_method": args.a_dynamic_method,
+        "quant_method": args.quant_method,
+        "block_size": args.block_size,
+    }
+    args.v_quant_params = {
+        "n_bits": 16,
+        "per_channel_axes": [],
+        "symmetric": False,
+        "dynamic_method": args.a_dynamic_method,
+    }
     args.p_quant_params = {
         "n_bits": 16,
         "metric": "fix0to1",
