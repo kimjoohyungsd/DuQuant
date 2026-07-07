@@ -9,31 +9,40 @@ models=(
 #     "meta-llama/Llama-3.1-8B"
 # )
 
+LOG_DIR="./logs_quantization"
+mkdir -p "${LOG_DIR}"
+
 for model_name in "${models[@]}"; do
+
+    pure_model_name=$(basename "${model_name}")
+
     echo "=================================================="
-    echo "🚀 Starting Quantization & Eval for: ${model_name}"
+    echo "🚀 Starting Quantization & Eval for: ${pure_model_name}"
     echo "=================================================="
 
-    python main.py \
-        --block_size -1 \
-        --max_rotation_step 256 \
-        --epochs 0 \
-        --wbits 4 \
-        --abits 4 \
-        --model "$model_name" \
-        --lwc \
-        --lac 0.9 \
-        --swc 0.8 \
-        --eval_ppl \
-        --multigpu \
-        --permutation_times 0 \
-        --only_r1 \
-        # --smooth \
-        # --alpha 0.6 \
-        
-            # --task arc_easy,arc_challenge,hellaswag,winogrande,boolq,piqa \
-            
-    echo "✅ Finished: ${model_name}"
-    echo "=================================================="
+    # 💡 max_rotation_step 리스트를 순회하는 내부 루프 추가
+    for step in 256 512 1024; do
+
+        CURRENT_LOG="${LOG_DIR}/${pure_model_name}_step${step}.log"
+
+        echo "--------------------------------------------------"
+        echo "⚙️ Running with --max_rotation_step ${step}"
+        echo "--------------------------------------------------"
+
+        python main.py \
+            --block_size -1 \
+            --max_rotation_step "${step}" \
+            --epochs 0 \
+            --wbits 4 \
+            --abits 4 \
+            --model "$model_name" \
+            --lwc \
+            --lac 0.9 \
+            --swc 0.8 \
+            --eval_ppl \
+            --multigpu \
+            --permutation_times 0 \
+            --only_r1 2>&1 | tee "${CURRENT_LOG}"
+
+    done
 done
-            
