@@ -446,7 +446,33 @@ def main():
             "max_rotation_step": args.max_rotation_step,
             "permutation_times": args.permutation_times,
         }
-
+        args.q_quant_params = {
+            "n_bits": 16,
+            "per_channel_axes": [],
+            "symmetric": False,
+            "dynamic_method": args.a_dynamic_method,
+            "quant_method": args.quant_method,
+            "block_size": 128,
+            "max_rotation_step": args.max_rotation_step,
+        }
+        args.k_quant_params = {
+            "n_bits": 16,
+            "per_channel_axes": [],
+            "symmetric": False,
+            "dynamic_method": args.a_dynamic_method,
+            "quant_method": args.quant_method,
+            "block_size": 128,
+        }
+        args.v_quant_params = {
+            "n_bits": 16,
+            "per_channel_axes": [],
+            "symmetric": False,
+            "dynamic_method": args.a_dynamic_method,
+        }
+        args.p_quant_params = {
+            "n_bits": 16,
+            "metric": "fix0to1",
+        }
     # args.q_quant_params = {
     #     "n_bits": args.abits,
     #     "per_channel_axes": [],
@@ -472,33 +498,7 @@ def main():
     #     "symmetric": False,
     #     "dynamic_method": args.a_dynamic_method,
     # }
-    args.q_quant_params = {
-        "n_bits": 16,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-        "quant_method": args.quant_method,
-        "block_size": args.block_size,
-        "max_rotation_step": args.max_rotation_step,
-    }
-    args.k_quant_params = {
-        "n_bits": 16,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-        "quant_method": args.quant_method,
-        "block_size": args.block_size,
-    }
-    args.v_quant_params = {
-        "n_bits": 16,
-        "per_channel_axes": [],
-        "symmetric": False,
-        "dynamic_method": args.a_dynamic_method,
-    }
-    args.p_quant_params = {
-        "n_bits": 16,
-        "metric": "fix0to1",
-    }
+    
     if args.multigpu:
         gpu_id = get_lowest_occupied_gpu(wait_memory=5000)
         lm._device = f"cuda:{gpu_id}"

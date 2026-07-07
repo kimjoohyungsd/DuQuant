@@ -115,8 +115,8 @@ class QuantLlama3Attention(nn.Module):
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
-        
-        current_device = self.self_attn.q_proj.weight.device
+
+        current_device = self.q_proj.weight.device
         hidden_states = hidden_states.to(current_device)
         if attention_mask is not None:
             attention_mask = attention_mask.to(current_device)
