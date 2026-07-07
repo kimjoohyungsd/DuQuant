@@ -5,7 +5,12 @@ import pickle
 
 device = 'cuda'
 
-for n in [int(2**i) for i in range(1, 13)]: # [2^1,2^2,2^3,.....,2^12]
+lists = [int(2**i) for i in range(1, 14)]
+lists.append(5120)
+
+lists.sort()
+
+for n in lists: # [2^1,2^2,2^3,.....,2^12]
 
     v_i = 1 / np.sqrt(n)
 
