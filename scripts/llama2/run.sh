@@ -4,7 +4,6 @@ trap "echo -e '\n🛑 [Interrupt] Terminating overall loop...'; exit 1" SIGINT
 models=(
     "meta-llama/Llama-2-7b-hf"
     "meta-llama/Llama-2-13b-hf"
-    "meta-llama/Llama-3.1-8B"
 )
 # models=(
 #     "meta-llama/Llama-3.1-8B"

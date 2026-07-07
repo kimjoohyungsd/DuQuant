@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from models.int_llama_layer import QuantLlamaDecoderLayer
-from models.int_llama3_layer import QuantLlama3DecoderLayer
+
 from models.int_mistral_layer import QuantMistralDecoderLayer
 
 from quantize.int_linear import QuantLinear
@@ -75,6 +75,7 @@ def duquant(
     #     layer_name_prefix = "model.layers"
 
     if 'llama-3.1' in args.net.lower():
+        from models.int_llama3_layer import QuantLlama3DecoderLayer
         is_llama = True
         layers = model.model.layers
         model.model.embed_tokens = model.model.embed_tokens.to(dev)

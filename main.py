@@ -346,6 +346,17 @@ def main():
         args.net = args.model.split('/')[-1] # meta-llama/Llama2-7b-hf => Llama-2-7b-hf
     # assert args.net in net_choices
     args.model_family = args.net.split('-')[0] # Llama-2-7b-hf => Llama
+
+    if "llama" in args.net.lower():
+        if "llama-2" in args.net.lower() or "llama2" in args.net.lower():
+            args.model_family = "Llama2"
+        elif "llama-3" in args.net.lower() or "llama3" in args.net.lower():
+            # Llama-3, Llama-3.1, Llama-3.2 등을 모두 Llama3 그룹으로 통합
+            args.model_family = "Llama3"
+        else:
+            # 혹시 예외적인 이름이 들어올 경우 기본값 방어
+            args.model_family = "Llama"
+
     lm = LMClass(args) # 
     lm.seqlen = 2048
     lm.model.eval()
