@@ -20,7 +20,7 @@ for model_name in "${models[@]}"; do
     echo "=================================================="
 
     # 💡 max_rotation_step 리스트를 순회하는 내부 루프 추가
-    for step in 256 512 1024; do
+    for step in 32 64 128 256 512 1024; do
 
         CURRENT_LOG="${LOG_DIR}/${pure_model_name}_step${step}.log"
 
