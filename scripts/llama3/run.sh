@@ -14,7 +14,7 @@ for model_name in "${models[@]}"; do
     echo "=================================================="
 
     python main.py \
-        --block_size 128 \
+        --block_size -1 \
         --max_rotation_step 256 \
         --epochs 0 \
         --wbits 4 \
@@ -25,7 +25,7 @@ for model_name in "${models[@]}"; do
         --swc 0.8 \
         --eval_ppl \
         --multigpu \
-        --permutation_times 1 \
+        --permutation_times 0 \
         --only_r1 \
         # --smooth \
         # --alpha 0.6 \

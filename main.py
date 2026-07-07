@@ -364,7 +364,8 @@ def main():
         param.requires_grad = False
 
     
-
+    if args.block_size == -1:
+        args.block_size = lm.hidden_dim
     args.weight_quant_params = {
         "n_bits": args.wbits, # bits quantization하는 단위
         "per_channel_axes": [0], 
